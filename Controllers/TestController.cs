@@ -9,11 +9,8 @@ namespace sample_webapi.Controllers;
 [Route("[controller]")]
 public class TestController : ControllerBase
 {
-    private readonly ILogger<TestController> _logger;
-
-    public TestController(ILogger<TestController> logger)
+    public TestController()
     {
-        _logger = logger;
     }
 
     [HttpGet("azure-open-ai")]
@@ -24,7 +21,7 @@ public class TestController : ControllerBase
         var kernel = Kernel.CreateBuilder().AddAzureOpenAIChatCompletion("deployment-name", "endpoint", "apiKey").Build();
 
         var textCompletionService = kernel.GetRequiredService<ITextGenerationService>();
-        
+
         await foreach (var textStreamingResult in textCompletionService.GetStreamingTextContentsAsync(prompt))
         {
             yield return textStreamingResult.Text;
@@ -38,11 +35,38 @@ public class TestController : ControllerBase
 
         var kernel = Kernel.CreateBuilder().AddOpenAIChatCompletion("model-id", "api-key").Build();
 
-        var textCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-        
-        await foreach (var textStreamingResult in textCompletionService.GetStreamingChatMessageContentsAsync(prompt))
+        var textCompletionService = kernel.GetRequiredService<ITextGenerationService>();
+
+        await foreach (var textStreamingResult in textCompletionService.GetStreamingTextContentsAsync(prompt))
         {
-            yield return textStreamingResult.Content;
+            yield return textStreamingResult.Text;
+        }
+    }
+
+    [HttpGet("kernel-with-open-ai")]
+    public async IAsyncEnumerable<string> GetWithKernelOpenAi()
+    {
+        var prompt = "Write a short poem about cats";
+
+        var kernel = Kernel.CreateBuilder().AddOpenAIChatCompletion("model-id", "api-key").Build();
+
+        await foreach (var textStreamingResult in kernel.InvokePromptStreamingAsync(prompt))
+        {
+            yield return textStreamingResult.ToString();
+        }
+    }
+
+    [HttpGet("kernel-with-azure-open-ai")]
+    public async IAsyncEnumerable<string> GetWithKernelAzureOpenAi()
+    {
+        var prompt = "Write a short poem about cats";
+
+        var kernel = Kernel.CreateBuilder().AddAzureOpenAIChatCompletion("deployment-name", "endpoint", "apiKey")
+            .Build();
+
+        await foreach (var textStreamingResult in kernel.InvokePromptStreamingAsync(prompt))
+        {
+            yield return textStreamingResult.ToString();
         }
     }
 }
